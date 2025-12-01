@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Game Edukasi Bentuk & Warna untuk Anak TK
-Versi Lengkap dengan Fitur Kuis, Belajar, dan Leaderboard
-"""
-
 import pygame
 import sys
 import os
@@ -117,7 +111,7 @@ class Game:
         
         # Draw shapes preview
         from core.shapes import draw_bentuk
-        shapes_preview = ["persegi", "lingkaran", "segitiga", "bintang", "hati"]
+        shapes_preview = ["persegi", "lingkaran", "segitiga", "bintang", "hati", "jajar_genjang"]
         colors_preview = [(255,0,0), (0,0,255), (0,255,0), (255,255,0), (255,0,255)]
         
         for i, (shape, color) in enumerate(zip(shapes_preview, colors_preview)):
@@ -225,9 +219,11 @@ class Game:
         return None  # Stay in menu
     
     def show_game(self):
-        """Show game screen - FIXED BUTTON CLICKS"""
-        from core import generate_soal, generate_opsi, cek_jawaban, draw_bentuk
-        from core.logic import hitung_skor
+        """Show game screen - FIXED VERSION"""
+        from core.shapes import draw_bentuk
+        from core.generator import generate_soal, generate_opsi
+        from core.logic import cek_jawaban, hitung_skor
+        
         # Initialize game state jika pertama kali
         if not hasattr(self, 'game_started'):
             self.game_started = True
@@ -240,7 +236,7 @@ class Game:
             # Generate first question
             self.soal = generate_soal(BENTUK_LIST, WARNA_LIST)
             self.opsi = generate_opsi(self.soal, BENTUK_LIST, WARNA_LIST, 
-                                     LEVELS[self.state.level]["opsi"])
+                                    LEVELS[self.state.level]["opsi"])
             self.shape_img = draw_bentuk(self.soal.bentuk, self.soal.warna, 280)
             
             self.feedback = None
@@ -248,9 +244,12 @@ class Game:
             self.waiting_for_next = False
             self.next_question_timer = 0
         
-        # Handle events - SEDERHANAKAN!
+        # Get current mouse position untuk hover
+        current_mouse_pos = pygame.mouse.get_pos()
+        
+        # Handle events
         mouse_clicked = False
-        mouse_pos = pygame.mouse.get_pos()
+        clicked_pos = None
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -264,13 +263,13 @@ class Game:
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_clicked = True
-                mouse_pos = pygame.mouse.get_pos()
+                clicked_pos = pygame.mouse.get_pos()
         
         # Check for mouse clicks on buttons
-        if mouse_clicked and not self.waiting_for_next:
+        if mouse_clicked and not self.waiting_for_next and clicked_pos:
             # Check back button
             back_rect = pygame.Rect(20, 20, 100, 40)
-            if back_rect.collidepoint(mouse_pos):
+            if back_rect.collidepoint(clicked_pos):
                 delattr(self, 'game_started')
                 return "menu"
             
@@ -283,19 +282,19 @@ class Game:
             for i, opsi in enumerate(self.opsi):
                 btn_rect = pygame.Rect(start_x, start_y + i * 70, button_width, button_height)
                 
-                if btn_rect.collidepoint(mouse_pos):
+                if btn_rect.collidepoint(clicked_pos):
                     # User clicked an answer
                     if cek_jawaban(opsi, self.soal):
                         self.feedback = "✓ BENAR!"
                         self.feedback_color = CORRECT_COLOR
                         points = hitung_skor(self.time_left, 
-                                           LEVELS[self.state.level], 
-                                           self.streak)
+                                        LEVELS[self.state.level], 
+                                        self.streak)
                         self.score += points
-                        self.state.score = self.score  # Update game state
+                        self.state.score = self.score
                         self.streak += 1
                     else:
-                        self.feedback = f"✗ SALAH! Jawaban: {self.soal.bentuk} - {self.soal.warna_name}"
+                        self.feedback = f"✗ SALAH! Jawaban: {self.soal.bentuk.upper()} - {self.soal.warna_name.upper()}"
                         self.feedback_color = WRONG_COLOR
                         self.streak = 0
                     
@@ -306,17 +305,18 @@ class Game:
         
         # Check if it's time for next question
         if self.waiting_for_next:
-            if pygame.time.get_ticks() - self.next_question_timer > 1000:  # 1 second delay
+            if pygame.time.get_ticks() - self.next_question_timer > 1500:  # 1.5 second delay
                 # Generate new question
                 self.soal = generate_soal(BENTUK_LIST, WARNA_LIST)
                 self.opsi = generate_opsi(self.soal, BENTUK_LIST, WARNA_LIST, 
-                                         LEVELS[self.state.level]["opsi"])
+                                        LEVELS[self.state.level]["opsi"])
                 self.shape_img = draw_bentuk(self.soal.bentuk, self.soal.warna, 280)
                 self.time_left = LEVELS[self.state.level]["waktu"]
                 self.feedback = None
                 self.waiting_for_next = False
+                self.last_time = pygame.time.get_ticks()  # PENTING: Reset timer
         
-        # Update timer (only if not waiting for next question)
+        # Update timer
         if not self.waiting_for_next:
             current_time = pygame.time.get_ticks()
             if current_time - self.last_time >= 1000:
@@ -324,7 +324,6 @@ class Game:
                 self.last_time = current_time
                 
                 if self.time_left <= 0:
-                    # Time's up
                     self.state.score = self.score
                     self.state.save_score()
                     delattr(self, 'game_started')
@@ -343,15 +342,12 @@ class Game:
         info_y = 80
         font = self.font
         
-        # Level
         level_text = font.render(f"Level: {self.state.level.upper()}", True, TEXT_COLOR)
         self.screen.blit(level_text, (50, info_y))
         
-        # Score
         score_text = font.render(f"Skor: {self.score}", True, (0, 100, 200))
         self.screen.blit(score_text, (WINDOW_WIDTH - 150, info_y))
         
-        # Streak
         if self.streak > 0:
             fire_emoji = "🔥" if self.streak >= 5 else "⭐"
             streak_text = font.render(f"{fire_emoji} x{self.streak}", True, (255, 165, 0))
@@ -362,7 +358,6 @@ class Game:
         seconds = self.time_left % 60
         timer_text = f"{minutes:02d}:{seconds:02d}"
         
-        # Timer color based on time
         if self.time_left > 10:
             timer_color = (0, 200, 0)
         elif self.time_left > 5:
@@ -380,12 +375,10 @@ class Game:
         bar_x = WINDOW_WIDTH//2 - bar_width//2
         bar_y = info_y + 25
         
-        # Background bar
         pygame.draw.rect(self.screen, (200, 200, 200), 
                         (bar_x, bar_y, bar_width, bar_height), 
                         border_radius=4)
         
-        # Progress fill
         max_time = LEVELS[self.state.level]["waktu"]
         progress = min(self.time_left / max_time, 1.0)
         fill_width = int(bar_width * progress)
@@ -393,34 +386,38 @@ class Game:
                         (bar_x, bar_y, fill_width, bar_height), 
                         border_radius=4)
         
-        # Draw shape
-        if self.shape_img:
-            pos_x = WINDOW_WIDTH//2 - self.shape_img.get_width()//2
-            pos_y = 150
-            self.screen.blit(self.shape_img, (pos_x, pos_y))
+        # Draw shape - PENTING: Selalu coba draw
+        try:
+            if self.shape_img:
+                pos_x = WINDOW_WIDTH//2 - self.shape_img.get_width()//2
+                pos_y = 150
+                self.screen.blit(self.shape_img, (pos_x, pos_y))
+            else:
+                # Fallback jika image tidak berhasil di-load
+                error_text = font.render("ERROR: Gambar tidak berhasil dimuat!", True, (255, 0, 0))
+                self.screen.blit(error_text, (WINDOW_WIDTH//2 - 150, 200))
+        except Exception as e:
+            print(f"Error drawing shape: {e}")
+            error_text = font.render(f"Error: {str(e)[:30]}", True, (255, 0, 0))
+            self.screen.blit(error_text, (WINDOW_WIDTH//2 - 150, 200))
         
-        # Draw answer buttons
+        # Draw answer buttons dengan warna
         button_width = 400
         button_height = 50
         start_x = (WINDOW_WIDTH - button_width) // 2
         start_y = 400
         
-        # Get mouse position for hover effect
-        current_mouse_pos = pygame.mouse.get_pos()
-        
         for i, opsi in enumerate(self.opsi):
-            bentuk, warna = opsi
-            text = f"{bentuk.upper()} - {warna.upper()}"
+            bentuk, warna_name = opsi
+            text = f"{bentuk.upper()} - {warna_name.upper()}"
             
             btn_rect = pygame.Rect(start_x, start_y + i * 70, button_width, button_height)
             is_hovered = btn_rect.collidepoint(current_mouse_pos) and not self.waiting_for_next
             
-            # Draw button
             color = (230, 240, 255) if is_hovered else (255, 255, 255)
             pygame.draw.rect(self.screen, color, btn_rect, border_radius=8)
             pygame.draw.rect(self.screen, (100, 100, 100), btn_rect, 2, border_radius=8)
             
-            # Draw text
             label = font.render(text, True, (0, 0, 0))
             label_rect = label.get_rect(center=btn_rect.center)
             self.screen.blit(label, label_rect)
@@ -435,14 +432,13 @@ class Game:
         self.screen.blit(back_text, (back_rect.x + 10, back_rect.y + 10))
         
         # Draw feedback
-        if self.feedback and pygame.time.get_ticks() - self.feedback_time < 1000:
+        if self.feedback and pygame.time.get_ticks() - self.feedback_time < 1500:
             feedback_font = pygame.font.Font(None, 36)
             feedback_surf = feedback_font.render(self.feedback, True, self.feedback_color)
             feedback_rect = feedback_surf.get_rect(center=(WINDOW_WIDTH//2, 350))
             self.screen.blit(feedback_surf, feedback_rect)
             
-            # Draw countdown for next question
-            time_left = 1.0 - (pygame.time.get_ticks() - self.feedback_time) / 1000.0
+            time_left = 1.5 - (pygame.time.get_ticks() - self.feedback_time) / 1000.0
             countdown_text = font.render(f"Next in: {time_left:.1f}s", True, (150, 150, 150))
             countdown_rect = countdown_text.get_rect(center=(WINDOW_WIDTH//2, 380))
             self.screen.blit(countdown_text, countdown_rect)
@@ -450,12 +446,12 @@ class Game:
         # Draw instructions
         if not self.waiting_for_next:
             instr_text = font.render("Klik jawaban yang sesuai dengan gambar di atas", 
-                                   True, (100, 100, 100))
+                                True, (100, 100, 100))
             instr_rect = instr_text.get_rect(center=(WINDOW_WIDTH//2, 340))
             self.screen.blit(instr_text, instr_rect)
         
-        return None  # Stay in game
-        
+        return None
+    
     def show_learn(self):
         """Show learning mode - SIMPLIFIED"""
         from core.shapes import draw_bentuk
@@ -609,7 +605,7 @@ class Game:
         
         # Title
         title_font = pygame.font.Font(None, 64)
-        title = title_font.render("🏆 HIGH SCORES", True, PRIMARY)
+        title = title_font.render("HIGH SCORES", True, PRIMARY)
         title_rect = title.get_rect(center=(WINDOW_WIDTH//2, 80))
         self.screen.blit(title, title_rect)
         
@@ -678,7 +674,7 @@ class Game:
         back_color = (200, 200, 255) if back_hovered else (220, 220, 220)
         pygame.draw.rect(self.screen, back_color, back_rect, border_radius=5)
         pygame.draw.rect(self.screen, (100, 100, 100), back_rect, 2, border_radius=5)
-        back_text = font.render("← Kembali", True, (0, 0, 0))
+        back_text = font.render("Kembali", True, (0, 0, 0))
         self.screen.blit(back_text, (back_rect.x + 10, back_rect.y + 10))
         
         # Play again button
@@ -687,7 +683,7 @@ class Game:
         play_color = (50, 180, 255) if play_hovered else (100, 200, 255)
         pygame.draw.rect(self.screen, play_color, play_rect, border_radius=10)
         pygame.draw.rect(self.screen, (100, 100, 100), play_rect, 2, border_radius=10)
-        play_text = font.render("🎮 MAIN LAGI", True, (0, 0, 0))
+        play_text = font.render("MAIN LAGI", True, (0, 0, 0))
         play_rect_text = play_text.get_rect(center=play_rect.center)
         self.screen.blit(play_text, play_rect_text)
         

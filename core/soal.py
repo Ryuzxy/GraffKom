@@ -1,8 +1,8 @@
 class Soal:
     def __init__(self, bentuk, warna, warna_name):
         self.bentuk = bentuk
-        self.warna = warna          # nilai RGB
-        self.warna_name = warna_name  # nama warna (untuk jawaban)
+        self.warna = warna          
+        self.warna_name = warna_name  
 
     @property
     def jawaban_benar(self):

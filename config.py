@@ -12,7 +12,7 @@ CORRECT_COLOR = (100, 255, 100)
 WRONG_COLOR = (255, 100, 100)
 
 # BENTUK & WARNA
-BENTUK_LIST = ["persegi", "lingkaran", "segitiga", "segi_enam", "segi_lima", "jajar_genjang"]
+BENTUK_LIST = ["persegi", "lingkaran", "segitiga", "segi_enam", "segi_lima", "jajar_genjang", "bintang", "hati"]
 WARNA_LIST = {
     "merah": (255, 0, 0),
     "biru": (0, 0, 255),
@@ -23,7 +23,7 @@ WARNA_LIST = {
     "pink": (255, 192, 203),
     "coklat": (165, 42, 42),
     "toska": (64, 224, 208),
-    "abu-abu": (128, 128, 128),
+    "abu_abu": (128, 128, 128),
 }
 
 # LEVEL KESULITAN

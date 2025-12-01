@@ -7,7 +7,7 @@ class GameState:
         self.score = 0
         self.streak = 0
         self.level = "mudah"
-        self.game_mode = "kuis"  # "kuis" atau "belajar"
+        self.game_mode = "kuis"  
         self.player_name = "Player"
         
     def reset(self):
